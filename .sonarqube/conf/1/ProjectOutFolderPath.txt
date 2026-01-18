@@ -1,0 +1,1 @@
+D:\xampp8.1\htdocs\secure-code-dotnet\.sonarqube\out\1

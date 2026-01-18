@@ -1,0 +1,43 @@
+@{
+    ViewData["Title"] = "SQL Injection Demo";
+    var id = ViewData["Id"] as string;
+    var results = ViewData["Results"] as List<Dictionary<string, object>>;
+}
+
+<h2>SQL Injection Demo</h2>
+
+@if (results != null && results.Count > 0)
+{
+    <h3>Query Results</h3>
+    <table border="1">
+        <thead>
+            <tr>
+                @foreach (var key in results[0].Keys)
+                {
+                    <th>@key</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var row in results)
+            {
+                <tr>
+                    @foreach (var value in row.Values)
+                    {
+                        <td>@value</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (id != null)
+{
+    <p>No results found.</p>
+}
+
+<form style="margin-top: 30px" action="/SqlInjection/update-password" method="POST">
+    New Password: <input type="password" name="password">
+    <input type="submit" value="Change Password">
+    <input type="hidden" name="id" value="@id">
+</form>

@@ -1,0 +1,6 @@
+@secure_code_HostAddress = http://localhost:5222
+
+GET {{secure_code_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

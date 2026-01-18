@@ -1,0 +1,48 @@
+<html>
+<head>
+    <title>Broken Access Control Demo</title>
+    <script>
+        function login() {
+            fetch('/BrokenAccessControl/Login')
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Login error:', error);
+                    window.location.reload();
+                });
+        }
+
+        function logout() {
+            fetch('/BrokenAccessControl/Logout')
+                .then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        window.location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.reload();
+                });
+        }
+    </script>
+</head>
+<body>
+<h1>Test</h1>
+<a href="#" onclick="login(); return false;">Login</a>
+<a href="#" onclick="logout(); return false;">Logout</a>
+
+<h3>This Image is from insecure-directory</h3>
+<img src="/images/insecure-directory/identity-cardno-1.jpg">
+
+<h3>This Image is accessible only to logged in user</h3>
+<img src="/BrokenAccessControl/GetImage?id=2"><br>
+
+</body>
+</html>
