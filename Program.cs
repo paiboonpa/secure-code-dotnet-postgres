@@ -1,9 +1,12 @@
 // ส่วนหัว (มักจะมีอยู่แล้วในเทมเพลตโปรเจกต์)
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using secure_code.Data;
 using secure_code.Data.Repositories;
+using System.Text;
 
 // using System.Net.Http; // มักจะไม่ต้องใช้ Using เพราะ AddHttpClient จัดการให้
 // using System; // สำหรับ Uri, Exception
