@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Oracle.ManagedDataAccess.Client;
+using Npgsql;
 using secure_code.Data;
 using secure_code.Models;
 using System.Text.Json;
@@ -37,11 +37,11 @@ public class SqlInjectionController : Controller
     {
         // VULNERABLE: Direct string interpolation - SQL Injection possible
         //string sql = $"SELECT * FROM USERS WHERE ID = {id}";
-        string sql = "SELECT * FROM USERS WHERE ID = :id";
+        string sql = "SELECT * FROM USERS WHERE ID = @id";
 
         var users = await _context.Users
             //.FromSqlRaw(sql)
-            .FromSqlRaw(sql, new OracleParameter("id", id))
+            .FromSqlRaw(sql, new NpgsqlParameter("@id", id))
             .ToListAsync();
 
         ViewData["Results"] = ConvertUsersToDictionary(users);
@@ -55,12 +55,12 @@ public class SqlInjectionController : Controller
     public async Task<IActionResult> Protected([FromQuery] string? id)
     {
         // PROTECTED: Using parameterized query with FromSqlRaw
-        // Oracle uses named parameters with : prefix
-        string sql = "SELECT * FROM USERS WHERE ID = :id";
+        // PostgreSQL uses named parameters with @ prefix
+        string sql = "SELECT * FROM USERS WHERE ID = @id";
 
-        // Try both parameter types - Varchar2 and Int32
+        // Try both parameter types - Varchar and Int32
         var users = await _context.Users
-            .FromSqlRaw(sql, new OracleParameter("id", id))
+            .FromSqlRaw(sql, new NpgsqlParameter("@id", id))
             .ToListAsync();
 
         ViewData["Results"] = ConvertUsersToDictionary(users);
@@ -126,12 +126,12 @@ public class SqlInjectionController : Controller
         Console.WriteLine($"New Password: {password}");
 
         // PROTECTED: Using parameterized query
-        string sql = "UPDATE USERS SET PASSWORD = :password WHERE ID = :id";
+        string sql = "UPDATE USERS SET PASSWORD = @password WHERE ID = @id";
 
         var parameters = new[]
         {
-            new OracleParameter("password", password ?? ""),
-            new OracleParameter("id", Convert.ToInt32(id ?? "0"))
+            new NpgsqlParameter("@password", password ?? ""),
+            new NpgsqlParameter("@id", Convert.ToInt32(id ?? "0"))
         };
 
         Console.WriteLine($"Executing parameterized SQL: {sql}");

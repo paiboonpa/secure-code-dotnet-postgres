@@ -77,7 +77,7 @@ builder.Services.AddCors(options =>
 // Add EF Core DbContext with enhanced logging
 builder.Services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
 {
-    options.UseOracle(builder.Configuration.GetConnectionString("OracleDb"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgreSqlDb"))
            .EnableSensitiveDataLogging(true)  // Show parameter values
            .LogTo(Console.WriteLine, LogLevel.Information)  // Console logging
            .EnableDetailedErrors(true);  // Detailed error information
