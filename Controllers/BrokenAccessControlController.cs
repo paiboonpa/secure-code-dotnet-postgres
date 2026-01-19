@@ -81,8 +81,8 @@ public class BrokenAccessControlController : Controller
 
         // 2. การตรวจสอบสิทธิ์ (แปลงจาก if (!empty($_SESSION['user_id']) && $_SESSION['user_id'] == 1))
         // ตรวจสอบว่ามีค่าใน Session และค่าเป็น 1 หรือไม่
-        bool hasAccess = userId.HasValue && userId.Value == 1;
-        //bool hasAccess = true; // ลบการตรวจสอบสิทธิ์เพื่อสาธิต Broken Access Control
+        //bool hasAccess = userId.HasValue && userId.Value == 1;
+        bool hasAccess = true; // ลบการตรวจสอบสิทธิ์เพื่อสาธิต Broken Access Control
         if (hasAccess)
         {
             // 3. การสร้าง Path (แปลงจาก $url = "forbidden/identity-cardno-".$_GET['id'].".jpg";)
