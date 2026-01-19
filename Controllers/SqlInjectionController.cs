@@ -134,11 +134,22 @@ public class SqlInjectionController : Controller
         // PROTECTED: Using parameterized query
         string sql = "UPDATE users SET password = @password WHERE id = @id";
 
-        var parameters = new[]
-        {
-            new NpgsqlParameter("@password", password ?? ""),
-            new NpgsqlParameter("@id", Convert.ToInt32(id ?? "0"))
-        };
+        NpgsqlParameter[] parameters = [];
+        try {
+            parameters = new[]
+            {
+                new NpgsqlParameter("@password", password ?? ""),
+                new NpgsqlParameter("@id", Convert.ToInt32(id ?? "0"))
+            };
+        } catch (Exception ex) {
+            Console.WriteLine($"Error converting id to int: {ex.Message}");
+            parameters = new[]
+            {
+                new NpgsqlParameter("@password", ""),
+                new NpgsqlParameter("@id", Convert.ToInt32("0"))
+            };
+        }
+        
 
         Console.WriteLine($"Executing parameterized SQL: {sql}");
         Console.WriteLine($"Parameters: password={password}, id={id}");
