@@ -39,10 +39,16 @@ public class SqlInjectionController : Controller
         string sql = $"SELECT * FROM users WHERE id = {id}";
         //string sql = "SELECT * FROM users WHERE id = @id";
 
-        var users = await _context.Users
+        var users = new List<User>();
+        try {
+            users = await _context.Users
             .FromSqlRaw(sql)
-            //.FromSqlRaw(sql, new NpgsqlParameter("@id", id))
+            //.FromSqlRaw(sql, new NpgsqlParameter("@id", int.Parse(id)))
             .ToListAsync();
+        } catch (Exception ex) {
+            Console.WriteLine($"Error param in SQL: {ex.Message}");
+        }
+        
 
         ViewData["Results"] = ConvertUsersToDictionary(users);
         ViewData["Id"] = id;
