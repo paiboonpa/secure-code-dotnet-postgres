@@ -36,12 +36,12 @@ public class SqlInjectionController : Controller
     public async Task<IActionResult> Injection([FromQuery] string? id)
     {
         // VULNERABLE: Direct string interpolation - SQL Injection possible
-        //string sql = $"SELECT * FROM USERS WHERE ID = {id}";
-        string sql = "SELECT * FROM USERS WHERE ID = @id";
+        string sql = $"SELECT * FROM users WHERE id = {id}";
+        //string sql = "SELECT * FROM users WHERE id = @id";
 
         var users = await _context.Users
-            //.FromSqlRaw(sql)
-            .FromSqlRaw(sql, new NpgsqlParameter("@id", id))
+            .FromSqlRaw(sql)
+            //.FromSqlRaw(sql, new NpgsqlParameter("@id", id))
             .ToListAsync();
 
         ViewData["Results"] = ConvertUsersToDictionary(users);
@@ -52,11 +52,11 @@ public class SqlInjectionController : Controller
 
     // Protected endpoint - Using FromSqlRaw with parameters
     [HttpGet("protected")]
-    public async Task<IActionResult> Protected([FromQuery] string? id)
+    public async Task<IActionResult> Protected([FromQuery] int? id)
     {
         // PROTECTED: Using parameterized query with FromSqlRaw
         // PostgreSQL uses named parameters with @ prefix
-        string sql = "SELECT * FROM USERS WHERE ID = @id";
+        string sql = "SELECT * FROM users WHERE id = @id";
 
         // Try both parameter types - Varchar and Int32
         var users = await _context.Users
@@ -99,7 +99,7 @@ public class SqlInjectionController : Controller
         Console.WriteLine($"New Password: {password}");
 
         // VULNERABLE: Direct string interpolation - SQL Injection possible
-        string sql = $"UPDATE USERS SET PASSWORD = '{password}' WHERE ID = {id}";
+        string sql = $"UPDATE users SET password = '{password}' WHERE id = {id}";
 
         Console.WriteLine($"Executing SQL: {sql}");
 
@@ -126,7 +126,7 @@ public class SqlInjectionController : Controller
         Console.WriteLine($"New Password: {password}");
 
         // PROTECTED: Using parameterized query
-        string sql = "UPDATE USERS SET PASSWORD = @password WHERE ID = @id";
+        string sql = "UPDATE users SET password = @password WHERE id = @id";
 
         var parameters = new[]
         {

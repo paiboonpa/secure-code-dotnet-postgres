@@ -20,19 +20,18 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             // Try different table name configurations for case sensitivity
-            entity.ToTable("USERS");  // Default uppercase
+            entity.ToTable("users");  // Default lowercase
 
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("ID").ValueGeneratedNever();
-            entity.Property(e => e.FirstName).HasColumnName("FIRSTNAME").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.LastName).HasColumnName("LASTNAME").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Password).HasColumnName("PASSWORD").IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Salary).HasColumnName("SALARY");
-            entity.Property(e => e.Money).HasColumnName("MONEY");
-            entity.Property(e => e.JsonData).HasColumnName("JSON_DATA").IsRequired().HasMaxLength(4000);
-
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+            entity.Property(e => e.FirstName).HasColumnName("firstname").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.LastName).HasColumnName("lastname").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Password).HasColumnName("password").IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Salary).HasColumnName("salary");
+            entity.Property(e => e.Money).HasColumnName("money");
+            entity.Property(e => e.JsonData).HasColumnName("json_data").IsRequired().HasMaxLength(4000);
             // Log the table mapping for debugging
-            Console.WriteLine("Entity Framework User entity mapped to table: USERS");
+            Console.WriteLine("Entity Framework User entity mapped to table: users");
         });
     }
 }

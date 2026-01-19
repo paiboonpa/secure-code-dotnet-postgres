@@ -22,7 +22,7 @@ public class UserRepository : IUserRepository
     public async Task<User?> GetByIdVulnerableAsync(string id)
     {
         // VULNERABLE: For demonstration purposes only
-        string sql = $"SELECT * FROM USERS WHERE ID = {id}";
+        string sql = $"SELECT * FROM users WHERE id = {id}";
         return await _context.Users
             .FromSqlRaw(sql)
             .FirstOrDefaultAsync();
