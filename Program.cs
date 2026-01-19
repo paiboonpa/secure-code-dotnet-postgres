@@ -71,10 +71,9 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy( // ตั้งชื่อ Policy เป็น Default
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000") // อนุญาตเฉพาะ Origin นี้
-                  .AllowCredentials()
-                  .AllowAnyMethod() // อนุญาต HTTP Method ใดก็ได้ (GET, POST, etc.)
-                  .AllowAnyHeader(); // อนุญาต Header ใดก็ได้
+            // policy.WithOrigins("*") // อนุญาตเฉพาะ Origin นี้
+            //       .AllowAnyMethod() // อนุญาต HTTP Method ใดก็ได้ (GET, POST, etc.)
+            //       .AllowAnyHeader(); // อนุญาต Header ใดก็ได้
         });
 });
 

@@ -17,8 +17,7 @@ class Login extends React.Component {
     try {
       const response = await fetch('http://localhost:8080/Cors/demo', {
         method: 'POST',
-        body: formData,
-        credentials: 'include'
+        body: formData
       })
       alert(await response.text());
     } catch (e) {
