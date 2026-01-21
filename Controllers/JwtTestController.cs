@@ -1,241 +1,190 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
+using Microsoft.IdentityModel.JsonWebTokens; 
 using System.Security.Claims;
 using System.Text;
 
-namespace secure_code.Controllers
+namespace secure_code.Controllers;
+
+[ApiController]
+[Route("[controller]")]
+// ใช้ Primary Constructor สำหรับ .NET 10 / C# 12+
+public class JwtTestController : ControllerBase
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class JwtTestController : ControllerBase
+    private readonly string _key = "ThisIsASecretKeyForJWTTokenGeneration123456789"; 
+    private readonly string _issuer = "SecureCodeApp";
+    private readonly string _audience = "SecureCodeUsers";
+    private readonly JsonWebTokenHandler _tokenHandler = new(); // ประสิทธิภาพสูงกว่า
+
+    [HttpGet("encode")]
+    public IActionResult EncodeJwt()
     {
-        private readonly string _key = "ThisIsASecretKeyForJWTTokenGeneration123456789"; // In production, use secure key from configuration
-        private readonly string _issuer = "SecureCodeApp";
-        private readonly string _audience = "SecureCodeUsers";
-
-        [HttpGet("encode")]
-        public IActionResult EncodeJwt()
+        try
         {
-            try
-            {
-                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
-                var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-                var claims = new[]
+            var descriptor = new SecurityTokenDescriptor
+            {
+                Issuer = _issuer,
+                Audience = _audience,
+                Subject = new ClaimsIdentity(new[]
                 {
-                    new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
                     new Claim("firstname", "Somchai"),
-                    new Claim("lastname", "Jaidee"),
-                };
+                    new Claim("lastname", "Jaidee")
+                }),
+                Expires = DateTime.UtcNow.AddHours(1),
+                IssuedAt = DateTime.UtcNow,
+                SigningCredentials = credentials
+            };
 
-                var token = new JwtSecurityToken(
-                    issuer: _issuer,
-                    audience: _audience,
-                    claims: claims,
-                    expires: DateTime.UtcNow.AddHours(1),
-                    signingCredentials: credentials
-                );
+            // สร้าง Token แบบรวดเร็ว
+            var jwt = _tokenHandler.CreateToken(descriptor);
 
-                var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-
-                return Ok(new
-                {
-                    jwt = jwt,
-                    message = "JWT encoded successfully",
-                    payload = new
-                    {
-                        iss = _issuer,
-                        aud = _audience,
-                        iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                        exp = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds()
-                    }
-                });
-            }
-            catch (Exception ex)
+            return Ok(new
             {
-                return StatusCode(500, new { error = ex.Message });
-            }
+                jwt = jwt,
+                message = "JWT encoded successfully (optimized for .NET 10)",
+                payload = new
+                {
+                    iss = _issuer,
+                    aud = _audience,
+                    iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    exp = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds()
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("decode")]
+    public async Task<IActionResult> DecodeJwt([FromQuery] string jwt)
+    {
+        if (string.IsNullOrEmpty(jwt))
+            return BadRequest(new { error = "JWT token is required" });
+
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = _issuer,
+            ValidateAudience = true,
+            ValidAudience = _audience,
+            ValidateLifetime = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key)),
+            ClockSkew = TimeSpan.FromSeconds(60)
+        };
+
+        // .NET 10 แนะนำการตรวจสอบแบบ Async และใช้ ValidationResult
+        var result = await _tokenHandler.ValidateTokenAsync(jwt, validationParameters);
+
+        if (!result.IsValid)
+        {
+            return BadRequest(new { 
+                error = "Failed to decode JWT", 
+                reason = result.Exception?.Message ?? "Invalid Token" 
+            });
         }
 
-        [HttpGet("decode")]
-        public IActionResult DecodeJwt([FromQuery] string jwt)
+        // ดึง Claims ออกมาเป็น Dictionary แบบง่ายๆ
+        var decodedClaims = result.Claims.ToDictionary(c => c.Key, c => c.Value);
+
+        return Ok(new
         {
-            try
+            decoded = decodedClaims,
+            message = "JWT decoded successfully using JsonWebTokenHandler",
+            valid = true
+        });
+    }
+
+    [HttpPost("test-full-cycle")]
+    public async Task<IActionResult> TestFullCycle()
+    {
+        // สร้าง descriptor เพื่อทดสอบ
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+        
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Issuer = _issuer,
+            Audience = _audience,
+            Claims = new Dictionary<string, object> { 
+                { "user_id", "12345" }, 
+                { "username", "test_user" } 
+            },
+            Expires = DateTime.UtcNow.AddHours(1),
+            SigningCredentials = credentials
+        };
+
+        var jwt = _tokenHandler.CreateToken(descriptor);
+        
+        // Decode ทันที
+        var result = await _tokenHandler.ValidateTokenAsync(jwt, new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = _issuer,
+            ValidateAudience = true,
+            ValidAudience = _audience,
+            IssuerSigningKey = securityKey
+        });
+
+        return Ok(new
+        {
+            jwt = jwt,
+            valid = result.IsValid,
+            claims = result.ClaimsIdentity.Claims.Select(c => new { c.Type, c.Value })
+        });
+    }
+
+    [HttpGet("expired-token")]
+    public IActionResult GenerateExpiredToken()
+    {
+        try
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            // กำหนดเวลาที่หมดอายุไปแล้ว
+            var iat = DateTime.UtcNow.AddHours(-2);
+            var exp = DateTime.UtcNow.AddMinutes(-1); // หมดอายุเมื่อ 1 นาทีที่แล้ว
+
+            var descriptor = new SecurityTokenDescriptor
             {
-                if (string.IsNullOrEmpty(jwt))
+                Issuer = _issuer,
+                Audience = _audience,
+                Subject = new ClaimsIdentity(new[]
                 {
-                    return BadRequest(new { error = "JWT token is required" });
-                }
+                    new Claim("test_mode", "expired_test")
+                }),
+                IssuedAt = iat,
+                NotBefore = iat,
+                Expires = exp,
+                SigningCredentials = credentials
+            };
 
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.UTF8.GetBytes(_key);
+            // ใช้ JsonWebTokenHandler (ประสิทธิภาพสูงกว่า JwtSecurityTokenHandler เดิม)
+            var jwt = _tokenHandler.CreateToken(descriptor);
 
-                // Configure validation parameters
-                var validationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = _issuer,
-                    ValidateAudience = true,
-                    ValidAudience = _audience,
-                    ValidateLifetime = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ClockSkew = TimeSpan.FromSeconds(60) // Leeway of 60 seconds
-                };
-
-                // Validate and decode the token
-                var principal = tokenHandler.ValidateToken(jwt, validationParameters, out SecurityToken validatedToken);
-                var decodedToken = (JwtSecurityToken)validatedToken;
-
-                // Extract claims as dictionary
-                var decodedClaims = new Dictionary<string, object>();
-                foreach (var claim in decodedToken.Claims)
-                {
-                    decodedClaims[claim.Type] = claim.Value;
-                }
-
-                return Ok(new
-                {
-                    decoded = decodedClaims,
-                    message = "JWT decoded successfully",
-                    valid = true
-                });
-            }
-            catch (SecurityTokenExpiredException)
+            return Ok(new
             {
-                return BadRequest(new { error = "Failed to decode expired token" });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = "Failed to decode JWT", details = ex.Message });
-            }
+                jwt = jwt,
+                payload = new
+                {
+                    iss = _issuer,
+                    aud = _audience,
+                    iat = new DateTimeOffset(iat).ToUnixTimeSeconds(),
+                    nbf = new DateTimeOffset(iat).ToUnixTimeSeconds(),
+                    exp = new DateTimeOffset(exp).ToUnixTimeSeconds()
+                },
+                message = "Expired JWT generated for testing (optimized for .NET 10)",
+                expired = true
+            });
         }
-
-        [HttpPost("test-full-cycle")]
-        public IActionResult TestFullCycle()
+        catch (Exception ex)
         {
-            try
-            {
-                // Create token
-                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
-                var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-                var claims = new[]
-                {
-                    new Claim("iss", _issuer),
-                    new Claim("aud", _audience),
-                    new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
-                    new Claim("nbf", DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds().ToString()),
-                    new Claim("exp", DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds().ToString()),
-                    new Claim("user_id", "12345"),
-                    new Claim("username", "test_user")
-                };
-
-                var token = new JwtSecurityToken(
-                    issuer: _issuer,
-                    audience: _audience,
-                    claims: claims,
-                    expires: DateTime.UtcNow.AddHours(1),
-                    signingCredentials: credentials
-                );
-
-                var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-
-                // Decode token
-                var tokenHandler = new JwtSecurityTokenHandler();
-                var key = Encoding.UTF8.GetBytes(_key);
-
-                var validationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = _issuer,
-                    ValidateAudience = true,
-                    ValidAudience = _audience,
-                    ValidateLifetime = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ClockSkew = TimeSpan.FromSeconds(60)
-                };
-
-                var principal = tokenHandler.ValidateToken(jwt, validationParameters, out SecurityToken validatedToken);
-                var decodedToken = (JwtSecurityToken)validatedToken;
-
-                var decodedClaims = new Dictionary<string, object>();
-                foreach (var claim in decodedToken.Claims)
-                {
-                    decodedClaims[claim.Type] = claim.Value;
-                }
-
-                return Ok(new
-                {
-                    jwt = jwt,
-                    encoded_payload = new
-                    {
-                        iss = _issuer,
-                        aud = _audience,
-                        iat = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        nbf = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds(),
-                        exp = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds(),
-                        user_id = "12345",
-                        username = "test_user"
-                    },
-                    decoded_payload = decodedClaims,
-                    message = "Full encode/decode cycle completed successfully",
-                    valid = true
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = "Full cycle test failed", details = ex.Message });
-            }
-        }
-
-        [HttpGet("expired-token")]
-        public IActionResult GenerateExpiredToken()
-        {
-            try
-            {
-                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
-                var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-                // Create token that's already expired 
-                var claims = new[]
-                {
-                    new Claim("iss", _issuer),
-                    new Claim("aud", _audience),
-                    new Claim("iat", DateTimeOffset.UtcNow.AddHours(-2).ToUnixTimeSeconds().ToString()),
-                    new Claim("nbf", DateTimeOffset.UtcNow.AddHours(-2).ToUnixTimeSeconds().ToString()),
-                    new Claim("exp", DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds().ToString()) // Expired 1 minute ago
-                };
-
-                var token = new JwtSecurityToken(
-                    issuer: _issuer,
-                    audience: _audience,
-                    claims: claims,
-                    expires: DateTime.UtcNow.AddMinutes(-1), // Expired token
-                    signingCredentials: credentials
-                );
-
-                var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-
-                return Ok(new
-                {
-                    jwt = jwt,
-                    payload = new
-                    {
-                        iss = _issuer,
-                        aud = _audience,
-                        iat = DateTimeOffset.UtcNow.AddHours(-2).ToUnixTimeSeconds(),
-                        nbf = DateTimeOffset.UtcNow.AddHours(-2).ToUnixTimeSeconds(),
-                        exp = DateTimeOffset.UtcNow.AddMinutes(-1).ToUnixTimeSeconds()
-                    },
-                    message = "Expired JWT generated for testing",
-                    expired = true
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = ex.Message });
-            }
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 }
