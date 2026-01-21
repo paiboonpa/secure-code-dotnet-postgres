@@ -23,46 +23,17 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true; // ทำให้ Session Cookie จำเป็นต่อการทำงาน
 });
 
+// 1. กำหนดค่า Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         // กำหนดชื่อ Scheme สำหรับการอ้างอิง
         // CookieAuthenticationDefaults.AuthenticationScheme คือ "Cookies"
-        options.LoginPath = "/Account/Login"; // ระบุหน้า Login (ถ้ามี)
-    })
-    .AddJwtBearer(options =>
-{
-    // กำหนดพารามิเตอร์ในการตรวจสอบโทเค็น
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(
-                builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT:Key is not configured")
-            )
-        )
-    };
-});
-
-// 2. เพิ่ม Authorization Service
-builder.Services.AddAuthorization(options =>
-{
-    // สร้าง Policy ชื่อ "CookieOrJwt"
-    options.AddPolicy("CookieOrJwt", policy =>
-    {
-        // ระบุว่า Endpoint นี้อนุญาตให้ใช้ Schemes เหล่านี้ได้
-        policy.AddAuthenticationSchemes(
-            CookieAuthenticationDefaults.AuthenticationScheme, // "Cookies"
-            JwtBearerDefaults.AuthenticationScheme             // "Bearer"
-        );
-        // กำหนดให้ต้องมีการพิสูจน์ตัวตน (Authentication) สำเร็จด้วย Scheme ใด Scheme หนึ่ง
-        policy.RequireAuthenticatedUser();
+        // options.LoginPath = "/Account/Login"; // ระบุหน้า Login (ถ้ามี)
     });
-});
+
+// 2. เพิ่ม Authorization Service พร้อม Policy
+builder.Services.AddAuthorization();
 
 
 // เพิ่มบริการสำหรับ CORS
@@ -110,9 +81,6 @@ app.UseStaticFiles();
 
 // เปิดใช้งาน routing
 app.UseRouting();
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 // กำหนดให้แอปพลิเคชันรันที่พอร์ต 8080
 app.Urls.Add("http://localhost:8080");
